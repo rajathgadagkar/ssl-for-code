@@ -105,7 +105,7 @@ class Predictor:
             if prompt is None:
                 break
 
-        results = [Prediction(r[0], r[1][0], r[1][1]) for r in beam.result_heap]
+        results = [Prediction(r[0], r[2][0], r[2][1]) for r in beam.result_heap]
         results.sort(key=lambda item: -item.prob)
         return results
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from heapq import heappop, heappush
+from itertools import count
 from typing import Any, List, Optional, Tuple
 
 import torch
@@ -99,9 +100,10 @@ class BeamSearchSimple(BeamSearch):
         assert len(probs) == beam_size
         self.probs = list(probs)
 
-        self.result_heap: List[Tuple[float, Tuple[str, Any]]] = []
+        self.result_heap: List[Tuple[float, int, Tuple[str, Any]]] = []
         self.text: List[str] = [""] * beam_size
-        self.beam_heap: List[Tuple[float, Tuple[int, int]]] = []
+        self.beam_heap: List[Tuple[float, int, Tuple[int, int]]] = []
+        self._counter = count()
 
     @staticmethod
     def is_substr(original: Optional[str], token_str: str) -> bool:
@@ -118,7 +120,7 @@ class BeamSearchSimple(BeamSearch):
 
         beam_state = self.state_updater.get_from_batch(state, beam_idx)
         text = self.text[beam_idx] + token_str
-        heappush(self.result_heap, (prob, (text, beam_state)))
+        heappush(self.result_heap, (prob, next(self._counter), (text, beam_state)))
         return True
 
     def add_prediction_before_token(self, prob: float, beam_idx: int, state: Any) -> bool:
@@ -129,7 +131,7 @@ class BeamSearchSimple(BeamSearch):
 
         beam_state = self.state_updater.get_from_batch(state, beam_idx)
         text = self.text[beam_idx]
-        heappush(self.result_heap, (prob, (text, beam_state)))
+        heappush(self.result_heap, (prob, next(self._counter), (text, beam_state)))
         return True
 
     def add_beam(self, prob: float, beam_idx: int, token: int) -> bool:
@@ -142,7 +144,7 @@ class BeamSearchSimple(BeamSearch):
             if self.beam_heap[0][0] > prob - EPS_PROB:
                 return False
             heappop(self.beam_heap)
-        heappush(self.beam_heap, (prob, (beam_idx, token)))
+        heappush(self.beam_heap, (prob, next(self._counter), (beam_idx, token)))
         return True
 
     def next_batch(
@@ -157,7 +159,7 @@ class BeamSearchSimple(BeamSearch):
         self.text = []
         self.probs = []
 
-        for prob, (b, token) in self.beam_heap:
+        for prob, _, (b, token) in self.beam_heap:
             token_tensor = prompt.new_tensor([token])
             if self.is_token_by_token or prompt.shape[0] == 0:
                 new_prompt.append(token_tensor)

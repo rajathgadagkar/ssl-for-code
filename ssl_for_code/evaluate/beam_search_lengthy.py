@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from heapq import heappop, heappush
+from itertools import count
 from typing import Any, List, Optional, Tuple
 
 import torch
@@ -44,9 +45,10 @@ class BeamSearchLengthy(BeamSearch):
         assert len(probs) == beam_size
         self.probs = list(probs)
 
-        self.result_heap: List[Tuple[float, Tuple[str, Any]]] = []
+        self.result_heap: List[Tuple[float, int, Tuple[str, Any]]] = []
         self.text: List[str] = [""] * beam_size
-        self.beam_heap: List[Tuple[float, Tuple[int, float, int]]] = []
+        self.beam_heap: List[Tuple[float, int, Tuple[int, float, int]]] = []
+        self._counter = count()
 
     @staticmethod
     def is_prefix(original: Optional[str], token_str: str) -> bool:
@@ -68,7 +70,7 @@ class BeamSearchLengthy(BeamSearch):
             heappop(self.result_heap)
 
         beam_state = self.state_updater.get_from_batch(state, beam_idx)
-        heappush(self.result_heap, (score, (text, beam_state)))
+        heappush(self.result_heap, (score, next(self._counter), (text, beam_state)))
 
     def _add_beam(self, prob: float, beam_idx: int, token: int) -> bool:
         if prob < MIN_BEAM_PROB:
@@ -82,7 +84,7 @@ class BeamSearchLengthy(BeamSearch):
                 return False
             heappop(self.beam_heap)
 
-        heappush(self.beam_heap, (score, (beam_idx, prob, token)))
+        heappush(self.beam_heap, (score, next(self._counter), (beam_idx, prob, token)))
         return True
 
     def next_batch(
@@ -97,7 +99,7 @@ class BeamSearchLengthy(BeamSearch):
         self.text = []
         self.probs = []
 
-        for _, (b, prob, token) in self.beam_heap:
+        for _, _, (b, prob, token) in self.beam_heap:
             token_tensor = prompt.new_tensor([token])
             if self.is_token_by_token or prompt.shape[0] == 0:
                 new_prompt.append(token_tensor)

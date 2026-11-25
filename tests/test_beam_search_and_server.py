@@ -2,21 +2,11 @@
 
 from __future__ import annotations
 
+import importlib.util
 import unittest
 
-try:
-    import torch
-
-    HAS_TORCH = True
-except ImportError:
-    HAS_TORCH = False
-
-try:
-    import flask  # noqa: F401
-
-    HAS_FLASK = True
-except ImportError:
-    HAS_FLASK = False
+HAS_TORCH = importlib.util.find_spec("torch") is not None
+HAS_FLASK = importlib.util.find_spec("flask") is not None
 
 
 @unittest.skipUnless(HAS_TORCH, "PyTorch is not installed in this environment")
