@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Checkpoints & downloaded raw corpora
+checkpoints/
+logs/
+data/download/
+data/source/
+data/train.py
+data/valid.py
+*.pt
+*.pth
+*.tar.gz
+
+# VS Code extension build outputs
+vscode_extension/node_modules/
+vscode_extension/output/
+vscode_extension/*.vsix
+
+# OS & editors
+.DS_Store
+.*.swp
+.idea/

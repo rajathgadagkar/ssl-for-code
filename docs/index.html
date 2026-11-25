@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSL-For-Code — Self-Supervised Python Code Auto-Completion</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #131a2e;
+      --panel-alt: #1a2340;
+      --border: #283459;
+      --text: #e6ecff;
+      --muted: #9aa7cc;
+      --accent: #60a5fa;
+      --accent-2: #a78bfa;
+      --green: #34d399;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--sans);
+      background: radial-gradient(circle at top right, #182347 0%, var(--bg) 55%);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    header { max-width: 1120px; margin: 0 auto; padding: 48px 24px 28px; text-align: center; }
+    .badge-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 18px; }
+    .badge {
+      font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px;
+      background: rgba(96, 165, 250, 0.14); border: 1px solid rgba(96, 165, 250, 0.35); color: var(--accent);
+    }
+    h1 {
+      font-size: clamp(2rem, 4vw, 3.1rem); font-weight: 800; letter-spacing: -0.02em;
+      background: linear-gradient(120deg, #93c5fd, #c4b5fd, #6ee7b7);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px;
+    }
+    header p { max-width: 720px; margin: 0 auto 24px; color: var(--muted); font-size: 1.05rem; }
+    .cta-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      display: inline-block; padding: 10px 20px; border-radius: 10px;
+      text-decoration: none; font-weight: 600; font-size: 0.95rem;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #081022; }
+    .btn-secondary { background: var(--panel); border: 1px solid var(--border); color: var(--text); }
+    main { max-width: 1120px; margin: 0 auto; padding: 12px 24px 72px; display: grid; gap: 28px; }
+    section.card {
+      background: rgba(19, 26, 46, 0.9); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+    }
+    h2 { font-size: 1.4rem; margin-bottom: 8px; color: #f8fafc; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 20px; }
+    textarea {
+      width: 100%; min-height: 170px; background: #0a0f1d; color: #e2e8f0;
+      border: 1px solid var(--border); border-radius: 12px; padding: 14px;
+      font-family: var(--mono); font-size: 0.9rem; resize: vertical;
+    }
+    .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .preset-btn {
+      background: var(--panel-alt); border: 1px solid var(--border); color: var(--text);
+      padding: 6px 12px; border-radius: 8px; font-size: 0.82rem; cursor: pointer;
+    }
+    .preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 16px 0; }
+    .stat { background: #0d1426; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+    .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.35rem; font-weight: 700; color: var(--green); font-family: var(--mono); }
+    .token-box {
+      background: #0a0f1d; border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px; min-height: 120px; display: flex; flex-wrap: wrap;
+      align-content: flex-start; gap: 6px; font-family: var(--mono); font-size: 0.84rem;
+    }
+    .tok { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12); }
+    .tok-id { font-size: 0.7rem; opacity: 0.7; }
+    .c0 { background: rgba(96, 165, 250, 0.18); color: #bfdbfe; }
+    .c1 { background: rgba(167, 139, 250, 0.18); color: #ddd6fe; }
+    .c2 { background: rgba(52, 211, 153, 0.18); color: #a7f3d0; }
+    .c3 { background: rgba(251, 191, 36, 0.18); color: #fde68a; }
+    .c4 { background: rgba(244, 114, 182, 0.18); color: #fbcfe8; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { color: var(--accent); font-weight: 600; background: rgba(96, 165, 250, 0.06); }
+    .slider-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-bottom: 16px; }
+    .slider-row label { font-size: 0.9rem; color: var(--muted); }
+    .bar-wrap { background: #0d1426; border-radius: 6px; height: 10px; width: 100%; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--green)); }
+    .pruned { opacity: 0.45; }
+    .screenshot { width: 100%; border-radius: 12px; border: 1px solid var(--border); display: block; }
+    footer { text-align: center; color: var(--muted); font-size: 0.88rem; padding: 24px; border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="badge-row">
+      <span class="badge">Transformer-XL</span>
+      <span class="badge">1,097-Token BPE</span>
+      <span class="badge">Prefix-Constrained Beam Search</span>
+      <span class="badge">VS Code Extension</span>
+    </div>
+    <h1>SSL-For-Code</h1>
+    <p>
+      Self-Supervised Learning for Python Code Auto-Completion — featuring a custom heap-accelerated
+      BPE tokenizer, four swappable PyTorch autoregressive architectures (Transformer-XL, Causal
+      Transformer, LSTM, RHN), prefix-constrained beam search, and real-time VS Code integration.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#playground">Try Live BPE Playground</a>
+      <a class="btn btn-secondary" href="#beam">Beam Search Simulator</a>
+      <a class="btn btn-secondary" href="#models">Model Zoo</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="card" id="playground">
+      <h2>Live Python BPE Tokenizer Playground</h2>
+      <p class="subtitle">
+        Runs the repository's 1,097-token BPE vocabulary (<code>assets/bpe.json</code>: 97 ASCII
+        characters + 1,000 learned merges) directly in the browser using the same identifier/symbol
+        pre-tokenizer as <code>ssl_for_code/dataset/bpe.py</code>.
+      </p>
+      <div class="presets">
+        <button class="preset-btn" data-preset="nn">PyTorch nn.Module</button>
+        <button class="preset-btn" data-preset="train">Training Loop</button>
+        <button class="preset-btn" data-preset="xl">Transformer-XL Forward</button>
+      </div>
+      <textarea id="codeInput" spellcheck="false">import torch
+import torch.nn as nn
+
+class SimpleNet(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int):
+        super().__init__()
+        self.layer1 = nn.Linear(input_size, hidden_size)
+        self.relu = nn.ReLU()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.layer1(x)
+        return self.relu(x)</textarea>
+
+      <div class="stats-bar">
+        <div class="stat"><div class="stat-label">Characters</div><div class="stat-value" id="statChars">0</div></div>
+        <div class="stat"><div class="stat-label">BPE Tokens</div><div class="stat-value" id="statTokens">0</div></div>
+        <div class="stat"><div class="stat-label">Compression</div><div class="stat-value" id="statRatio">0.00x</div></div>
+        <div class="stat"><div class="stat-label">Vocab Size</div><div class="stat-value" id="statVocab">1,097</div></div>
+      </div>
+
+      <div class="token-box" id="tokenOutput">Loading BPE vocabulary...</div>
+    </section>
+
+    <section class="card" id="beam">
+      <h2>Beam Search &amp; Confidence-Ratio Pruning Simulator</h2>
+      <p class="subtitle">
+        Compare <code>BeamSearchSimple</code> against <code>BeamSearchLengthy</code>
+        (score = |t|<sup>&alpha;</sup> &middot; p) and inspect how the VS Code extension's
+        confidence-ratio filter (p<sub>i</sub> &gt; r &middot; p<sub>i+1</sub>) prunes noisy tail
+        candidates.
+      </p>
+      <div class="slider-row">
+        <label>Length exponent (&alpha;): <strong id="alphaVal">0.20</strong><br />
+          <input type="range" id="alphaSlider" min="0" max="0.8" step="0.05" value="0.20" />
+        </label>
+        <label>Confidence ratio (r): <strong id="ratioVal">4.0x</strong><br />
+          <input type="range" id="ratioSlider" min="1.5" max="8.0" step="0.5" value="4.0" />
+        </label>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Candidate Completion (after <code>return self.rel</code>)</th>
+            <th>Raw Prob</th>
+            <th>Length-Weighted Score</th>
+            <th>VS Code Status</th>
+          </tr>
+        </thead>
+        <tbody id="beamTable"></tbody>
+      </table>
+    </section>
+
+    <section class="card" id="models">
+      <h2>Supported Autoregressive Architectures</h2>
+      <p class="subtitle">
+        All four models share the unified <code>AutoregressiveModel</code> interface
+        <code>(src, state) -&gt; (logits, new_state)</code> for drop-in training and beam decoding.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Architecture</th>
+            <th>Module</th>
+            <th>Long-Context Mechanism</th>
+            <th>Default Config</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Transformer-XL</strong> (Primary)</td>
+            <td><code>ssl_for_code/models/xl.py</code></td>
+            <td>Relative multi-head attention + segment-level memory recurrence (<code>mem_len=256</code>)</td>
+            <td>6 layers, 8 heads, d=512, AdamW 1.25e-4</td>
+          </tr>
+          <tr>
+            <td><strong>Causal Transformer</strong></td>
+            <td><code>ssl_for_code/models/transformer.py</code></td>
+            <td>Sinusoidal positional encoding + upper-triangular causal attention mask</td>
+            <td>6 layers, 8 heads, d=512, GELU FFN</td>
+          </tr>
+          <tr>
+            <td><strong>Multi-Layer LSTM</strong></td>
+            <td><code>ssl_for_code/models/lstm.py</code></td>
+            <td>Persistent hidden &amp; cell state tuples <code>(h_n, c_n)</code> across chunks</td>
+            <td>2 layers, hidden=512, dropout=0.2</td>
+          </tr>
+          <tr>
+            <td><strong>Recurrent Highway Network</strong></td>
+            <td><code>ssl_for_code/models/highway.py</code></td>
+            <td>Coupled transform/carry gates <code>H * T + s * (1 - T)</code> with recurrence depth L</td>
+            <td>2 layers, depth=2, hidden=512</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>VS Code Extension in Action</h2>
+      <p class="subtitle">
+        Real-time Python code suggestions delivered from the local Flask inference server to VS Code.
+      </p>
+      <img class="screenshot" src="assets/vscode-autocomplete.png" alt="SSL-For-Code VS Code Extension Autocompletion" />
+    </section>
+  </main>
+
+  <footer>
+    Built by Rajath Gadagkar &middot; MIT License
+  </footer>
+
+  <script>
+    const PRESETS = {
+      nn: `import torch\nimport torch.nn as nn\n\nclass SimpleNet(nn.Module):\n    def __init__(self, input_size: int, hidden_size: int):\n        super().__init__()\n        self.layer1 = nn.Linear(input_size, hidden_size)\n        self.relu = nn.ReLU()\n\n    def forward(self, x: torch.Tensor) -> torch.Tensor:\n        x = self.layer1(x)\n        return self.relu(x)`,
+      train: `def train_epoch(model, loader, optimizer, criterion):\n    model.train()\n    for src, tgt in loader:\n        optimizer.zero_grad()\n        logits, _ = model(src)\n        loss = criterion(logits.reshape(-1, logits.size(-1)), tgt.reshape(-1))\n        loss.backward()\n        optimizer.step()`,
+      xl: `def forward(self, x, mem=None):\n    q_len = x.size(0)\n    m_len = mem[0].size(0) if mem else 0\n    pos_seq = torch.arange(q_len + m_len - 1, -1, -1.0, device=x.device)\n    return self.generator(self.final_norm(x)), mem`
+    };
+
+    const ID_RE = /[A-Za-z0-9_]/;
+    let bpeItos = [];
+    let charStoi = {};
+    let pairRank = new Map();
+
+    function splitWords(text) {
+      if (!text) return [];
+      let last = 0, isId = false;
+      const out = [];
+      for (let i = 0; i < text.length; i++) {
+        const curId = ID_RE.test(text[i]);
+        if (curId && !isId) {
+          if (last < i) out.push(text.slice(last, i));
+          last = i; isId = true;
+        } else if (!curId && isId) {
+          if (last < i) out.push(text.slice(last, i));
+          last = i; isId = false;
+        }
+      }
+      if (last < text.length) out.push(text.slice(last));
+      return out;
+    }
+
+    function encodeWord(word) {
+      let codes = [];
+      for (const ch of word) {
+        if (ch in charStoi) codes.push(charStoi[ch]);
+      }
+      while (codes.length > 1) {
+        let bestRank = Infinity, bestIdx = -1;
+        for (let i = 0; i < codes.length - 1; i++) {
+          const rank = pairRank.get(`${codes[i]},${codes[i + 1]}`);
+          if (rank !== undefined && rank < bestRank) {
+            bestRank = rank; bestIdx = i;
+          }
+        }
+        if (bestIdx === -1) break;
+        codes.splice(bestIdx, 2, bestRank);
+      }
+      return codes;
+    }
+
+    function renderTokens() {
+      const code = document.getElementById('codeInput').value;
+      const words = splitWords(code);
+      const ids = [];
+      for (const w of words) ids.push(...encodeWord(w));
+
+      document.getElementById('statChars').textContent = code.length.toLocaleString();
+      document.getElementById('statTokens').textContent = ids.length.toLocaleString();
+      document.getElementById('statRatio').textContent = (code.length / Math.max(ids.length, 1)).toFixed(2) + 'x';
+
+      const box = document.getElementById('tokenOutput');
+      box.innerHTML = '';
+      ids.forEach((id, idx) => {
+        const raw = bpeItos[id] ?? '?';
+        const display = raw.replace(/\n/g, '↵').replace(/\t/g, '→').replace(/ /g, '·');
+        const span = document.createElement('span');
+        span.className = `tok c${idx % 5}`;
+        span.innerHTML = `<span>${display.replace(/</g, '&lt;')}</span><span class="tok-id">${id}</span>`;
+        box.appendChild(span);
+      });
+    }
+
+    const req = new XMLHttpRequest();
+    req.open('GET', 'assets/bpe.json', true);
+    req.onload = () => {
+      if (req.status >= 200 && req.status < 300) {
+        const data = JSON.parse(req.responseText);
+        charStoi = data.char_stoi;
+        bpeItos = [...data.char_itos];
+        for (let i = data.char_itos.length; i < data.bpe.length; i++) {
+          const [a, b] = data.bpe[i];
+          bpeItos.push(bpeItos[a] + bpeItos[b]);
+          pairRank.set(`${a},${b}`, i);
+        }
+        document.getElementById('statVocab').textContent = bpeItos.length.toLocaleString();
+        renderTokens();
+      }
+    };
+    req.onerror = () => {
+      document.getElementById('tokenOutput').textContent =
+        'Serve docs/ over HTTP or open via GitHub Pages to load assets/bpe.json.';
+    };
+    req.send();
+
+    document.getElementById('codeInput').addEventListener('input', renderTokens);
+    document.querySelectorAll('.preset-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.getElementById('codeInput').value = PRESETS[btn.dataset.preset];
+        renderTokens();
+      });
+    });
+
+    const CANDIDATES = [
+      { text: 'u(x)', prob: 0.62 },
+      { text: 'u(self.layer1(x))', prob: 0.21 },
+      { text: 'u = nn.ReLU()', prob: 0.11 },
+      { text: 'ative_attn(x, mem)', prob: 0.04 },
+      { text: 'u_out', prob: 0.02 },
+    ];
+
+    function renderBeam() {
+      const alpha = parseFloat(document.getElementById('alphaSlider').value);
+      const ratio = parseFloat(document.getElementById('ratioSlider').value);
+      document.getElementById('alphaVal').textContent = alpha.toFixed(2);
+      document.getElementById('ratioVal').textContent = ratio.toFixed(1) + 'x';
+
+      const scored = CANDIDATES.map((c) => ({
+        ...c,
+        score: Math.pow(c.text.length, alpha) * c.prob,
+      })).sort((a, b) => b.score - a.score);
+
+      let cutoff = scored.length;
+      for (let i = 0; i < scored.length - 1; i++) {
+        if (scored[i].prob > scored[i + 1].prob * ratio) {
+          cutoff = i + 1;
+          break;
+        }
+      }
+
+      const maxScore = Math.max(...scored.map((s) => s.score), 1e-6);
+      const tbody = document.getElementById('beamTable');
+      tbody.innerHTML = scored.map((c, idx) => {
+        const kept = idx < cutoff;
+        const pct = Math.round((c.score / maxScore) * 100);
+        return `<tr class="${kept ? '' : 'pruned'}">
+          <td><code>rel<strong>${c.text}</strong></code></td>
+          <td>${(c.prob * 100).toFixed(1)}%</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-family:var(--mono);min-width:52px;">${c.score.toFixed(3)}</span>
+              <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+            </div>
+          </td>
+          <td>${kept ? '<span style="color:var(--green);font-weight:600;">Shown</span>' : '<span style="color:var(--muted);">Pruned</span>'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('alphaSlider').addEventListener('input', renderBeam);
+    document.getElementById('ratioSlider').addEventListener('input', renderBeam);
+    renderBeam();
+  </script>
+</body>
+</html>

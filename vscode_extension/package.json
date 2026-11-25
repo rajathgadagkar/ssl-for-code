@@ -1,0 +1,56 @@
+{
+  "name": "ssl-for-code",
+  "displayName": "SSL-For-Code: Python AI Autocomplete",
+  "description": "Real-time Python code autocompletion powered by a self-supervised Transformer-XL language model.",
+  "version": "1.0.0",
+  "publisher": "rajathgadagkar",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Machine Learning"
+  ],
+  "activationEvents": [
+    "onLanguage:python"
+  ],
+  "main": "./output/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "SSL-For-Code",
+      "properties": {
+        "sslForCode.serverHost": {
+          "type": "string",
+          "default": "localhost",
+          "description": "Hostname of the running SSL-For-Code Flask inference server."
+        },
+        "sslForCode.serverPort": {
+          "type": "number",
+          "default": 5000,
+          "description": "Port of the running SSL-For-Code Flask inference server."
+        },
+        "sslForCode.contextLines": {
+          "type": "number",
+          "default": 20,
+          "description": "Number of preceding lines sent as context to the autocomplete model."
+        },
+        "sslForCode.confidenceRatio": {
+          "type": "number",
+          "default": 4.0,
+          "description": "Prune lower-ranked completions when top probability exceeds the next by this ratio."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.3.3"
+  }
+}

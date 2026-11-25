@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python-tests:
+    name: Python ${{ matrix.python-version }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install CPU PyTorch and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch || pip install torch
+          pip install flask pytest ruff
+          pip install --no-deps -e .
+
+      - name: Lint with ruff
+        run: ruff check ssl_for_code tests
+
+      - name: Run full test suite (BPE, Models, Beam Search, Flask API)
+        run: pytest -v
+
+      - name: CLI tokenization smoke test
+        run: |
+          python -m ssl_for_code.cli tokenize --code "def forward(self, x): return self.relu(x)"
+
+      - name: 1-epoch CPU training smoke test
+        run: |
+          python -m ssl_for_code.dataset.create_dataset --source-dir ssl_for_code --output-dir /tmp/ssl_smoke_data
+          python -m ssl_for_code.train \
+            --model transformer_xl \
+            --d-model 32 --n-layers 2 --n-heads 4 --d-ff 64 \
+            --batch-size 2 --seq-len 16 --epochs 1 --max-steps 3 \
+            --device cpu --data-dir /tmp/ssl_smoke_data --save-dir /tmp/ssl_smoke_ckpt
+
+  vscode-extension:
+    name: VS Code Extension (TypeScript Build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode_extension
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies and compile TypeScript
+        run: |
+          npm install
+          npm run compile

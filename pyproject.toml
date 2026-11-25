@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ssl-for-code"
+version = "1.0.0"
+description = "Self-Supervised Learning for Python Code Auto-Completion using Transformer-XL, BPE tokenization, prefix-constrained beam search, and a VS Code extension."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [
+    { name = "Rajath Gadagkar", email = "rajathgadagkar@gmail.com" },
+]
+keywords = [
+    "self-supervised-learning",
+    "code-autocomplete",
+    "transformer-xl",
+    "bpe-tokenizer",
+    "beam-search",
+    "pytorch",
+    "vscode-extension",
+    "python",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+    "torch>=2.0.0",
+    "flask>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+]
+
+[project.scripts]
+ssl-for-code = "ssl_for_code.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ssl_for_code*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
